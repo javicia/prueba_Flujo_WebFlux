@@ -37,7 +37,7 @@ Para un microservicio de sólo lectura, WebFlux reduce coste de infraestructura 
        └─────┬────────┘
              │ GetPriceQuery
     ┌────────────▼────────────┐
-    │   Application Service   │  ← Caso de uso (PriceService)
+    │   Application Service   │  ← Caso de uso (GetPriceUseCase)
     └────────────┬────────────┘
     │ PriceRepositoryPort (out)
     ┌────────────▼────────────┐
