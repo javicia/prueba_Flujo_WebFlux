@@ -9,8 +9,9 @@ Introducción
 3. Puertos de Entrada y Salida
 4. Principios SOLID aplicados
 5. Estructura del proyecto
-6. Cómo ejecutar
-7. Docker
+6. Cómo probar el ejercicio en Postman
+7. Patrón CircuitBeaker con Resilience4j
+8. Docker
 8. Tests
 
 # 1.Introducción
@@ -29,13 +30,13 @@ Microservicio reactivo que expone el precio aplicable a un producto de ZARA en
 
 Para un microservicio de sólo lectura, WebFlux reduce coste de infraestructura sin complicar la lógica de negocio.
 
-## Arquitectura Hexagonal + DDD
+## 2. Arquitectura Hexagonal + DDD
 
 ```bash
-       ┌──────────────┐
-       │  Controller  │  ← Adaptador de Entrada (HTTP)
-       └─────┬────────┘
-             │ GetPriceQuery
+           ┌──────────────┐
+           │  Controller  │  ← Adaptador de Entrada (HTTP)
+           └─────┬────────┘
+                 │ GetPriceQuery
     ┌────────────▼────────────┐
     │   Application Service   │  ← Caso de uso (GetPriceUseCase)
     └────────────┬────────────┘
@@ -60,14 +61,14 @@ Para un microservicio de sólo lectura, WebFlux reduce coste de infraestructura 
 * Sustituir BBDD o añadir Kafka = nuevo adaptador, sin tocar dominio.
 
 
-## Puertos de Entrada y Salida
+## 3. Puertos de Entrada y Salida
 
 * Entrada (GetPriceQuery): DTO inmutable que representa la petición.
 * Salida (PriceRepositoryPort): contrato para obtener el precio aplicable.
 
 Esto permite inversión de dependencias: dominio define interfaces, infra las implementa.
 
-## Principios SOLID
+## 4. Principios SOLID
 
 | Principio             | Aplicación                                                                                                                      |
 |-----------------------|---------------------------------------------------------------------------------------------------------------------------------|
@@ -78,7 +79,7 @@ Esto permite inversión de dependencias: dominio define interfaces, infra las im
 | Dependency Inversion  |  Dominio depende de abstracciones, no de detalles (PriceRepositoryPort).                                                                                                                               |
 
 
-## Estructura del proyecto
+## 5. Estructura del proyecto
 
 ```bash
 prices
@@ -104,15 +105,82 @@ prices
 ```
 
 
-# Como ejecutar
-```bash
-# Compilar
-mvn clean package
-# Arrancar
-java -jar target/Prueba_Izertis-0.0.1-SNAPSHOT.jar \
---spring.profiles.active=dev
+# 6. Cómo probar el ejercicio en Postman
+
+El endpoint expone el precio aplicable en una fecha concreta mediante una petición GET con query params.
+
+## Endpoint
+
 ```
-## Circuit Breaker (Resilience4j)
+GET /prices
+```
+
+## Autenticación (Basic Auth)
+
+La API está protegida con HTTP Basic.
+
+**En Postman:**
+
+1. Pestaña **Authorization**
+2. Type: **Basic Auth**
+3. Username: `izertisUser`
+4. Password: `izertisPass`
+
+> **Nota:** Si cambias las credenciales por variables de entorno, usa `APP_SECURITY_USER` y `APP_SECURITY_PASS`.
+
+## Parámetros (Query Params)
+
+En Postman, pestaña **Params**, añadir:
+
+| Key               | Ejemplo              | Descripción                              |
+|-------------------|----------------------|------------------------------------------|
+| `applicationDate` | `2020-06-14T10:00:00` | Fecha/hora de aplicación (ISO-8601)      |
+| `productId`       | `35455`              | Identificador del producto               |
+| `brandId`         | `1`                  | Identificador de la marca (ZARA = 1)     |
+
+> **Formato esperado de `applicationDate`:** `YYYY-MM-DDTHH:mm:ss` (incluye la `T`).
+
+## Ejemplos (los 5 casos del ejercicio)
+
+Asumiendo ejecución en local con puerto **8082**:
+
+### Caso 1
+
+```
+GET http://localhost:8082/prices?applicationDate=2020-06-14T10:00:00&productId=35455&brandId=1
+```
+
+### Caso 2
+
+```
+GET http://localhost:8082/prices?applicationDate=2020-06-14T16:00:00&productId=35455&brandId=1
+```
+
+### Caso 3
+
+```
+GET http://localhost:8082/prices?applicationDate=2020-06-14T21:00:00&productId=35455&brandId=1
+```
+
+### Caso 4
+
+```
+GET http://localhost:8082/prices?applicationDate=2020-06-15T10:00:00&productId=35455&brandId=1
+```
+
+### Caso 5
+
+```
+GET http://localhost:8082/prices?applicationDate=2020-06-16T21:00:00&productId=35455&brandId=1
+```
+
+## Comprobaciones rápidas (errores esperados)
+
+- **401 Unauthorized:** si no envías Basic Auth.
+- **400 Bad Request:** si `applicationDate` no tiene formato ISO-8601 válido.
+- **404 Not Found:** si no existe tarifa aplicable para los parámetros indicados.
+
+## 7. Circuit Breaker (Resilience4j)
 
 El microservicio envuelve el caso de uso getPrice con un Circuit Breaker configurado mediante Resilience4j:
 
@@ -123,7 +191,7 @@ El microservicio envuelve el caso de uso getPrice con un Circuit Breaker config
 
 De esta forma el servicio sigue siendo resiliente ante picos de error de la BBDD sin saturar hilos ni degradar el resto del ecosistema.
 
-## Docker
+## 8. Docker
 
 ```bash
 mvn package
@@ -132,7 +200,7 @@ docker build -f Dockerfile.dev -t izertis-dev .
 docker run -p 8082:8082 izertis-dev
 ```
 
-## Tests
+## 9. Tests
 
 * WebTestClient valida los 5 escenarios de negocio (tabla de precios).
 * Mocks de repositorio para unit tests de servicio.
