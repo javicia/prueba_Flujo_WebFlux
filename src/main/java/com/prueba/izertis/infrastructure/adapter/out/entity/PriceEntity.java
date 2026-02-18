@@ -19,23 +19,23 @@ public class PriceEntity {
     Integer brandId;
 
     @Column("start_date")
-    LocalDateTime startDate;
+    private LocalDateTime startDate;
 
     @Column("end_date")
-    LocalDateTime endDate;
+    private  LocalDateTime endDate;
 
     @Column("price_list")
-    Integer priceList;
+    private Integer priceList;
 
     @Column("product_id")
-    Long productId;
+    private Long productId;
 
     @Column("priority")
-    Integer priority;
+    private Integer priority;
 
     @Column("price")
-    BigDecimal price;
+    private BigDecimal price;
 
     @Column("currency")
-    String currency;
+    private String currency;
 }
